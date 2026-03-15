@@ -23,6 +23,7 @@ def authenticate_user(username, password):
     # Para adicionar: "novo_user": hashlib.sha256("senha".encode()).hexdigest()
     users = {
         "admin": hashlib.sha256("admin123".encode()).hexdigest(),
+        "Laura": hashlib.sha256("lauS2lau".encode()).hexdigest(),
         # Exemplo: "user2": hashlib.sha256("password2".encode()).hexdigest(),
     }
     if username in users and users[username] == hashlib.sha256(password.encode()).hexdigest():
