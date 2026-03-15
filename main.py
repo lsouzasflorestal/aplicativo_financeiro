@@ -26,7 +26,7 @@ config = {
             "admin": {
                 "email": "admin@example.com",
                 "name": "Administrador",
-                "password": stauth.Hasher(['admin123']).generate()[0]  # Senha: admin123
+                "password": stauth.Hasher.hash("admin123")  # Senha: admin123
             }
         }
     },
