@@ -73,10 +73,10 @@ else:
     if st.button("Entrar"):
         if username and password:
             # Verificar credenciais
-            if username in authenticator.credentials['usernames'] and stauth.Hasher.check(password, authenticator.credentials['usernames'][username]['password']):
+            if username in config['credentials']['usernames'] and stauth.Hasher.check(password, config['credentials']['usernames'][username]['password']):
                 st.session_state['authentication_status'] = True
                 st.session_state['username'] = username
-                st.session_state['name'] = authenticator.credentials['usernames'][username]['name']
+                st.session_state['name'] = config['credentials']['usernames'][username]['name']
                 st.success("Login realizado com sucesso!")
                 st.rerun()
             else:
