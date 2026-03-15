@@ -6,6 +6,8 @@ from calendar import monthrange
 import pandas as pd
 import time
 
+st.write("App loaded successfully!")
+
 from database import (
     init_database, authenticate_user,
     get_bancos, get_categorias, get_transacoes,
