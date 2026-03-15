@@ -68,10 +68,6 @@ def create_user_tables(username):
     except:
         pass
 
-def authenticate_user(username, password):
-    """Autentica um usuário usando o arquivo users.py"""
-    return auth_user_file(username, password)
-
 def init_database(username):
     """Inicializa o banco de dados do usuário"""
     create_user_tables(username)

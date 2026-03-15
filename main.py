@@ -5,9 +5,10 @@ from datetime import datetime, timedelta
 from calendar import monthrange
 import pandas as pd
 import time
+import streamlit_authenticator as stauth
 
 from database import (
-    init_database, authenticate_user,
+    init_database,
     get_bancos, get_categorias, get_transacoes,
     add_transacao, update_transacao, delete_transacao, get_transacao_by_id,
     add_banco, delete_banco, add_categoria, delete_categoria,
@@ -16,6 +17,33 @@ from database import (
 from utils import (
     formatar_moeda, formatar_percentual, get_mes_atual, get_ano_atual,
     get_nomes_meses, inicializar_session_state, criar_espacamento
+)
+
+# Configuração do autenticador
+config = {
+    "credentials": {
+        "usernames": {
+            "admin": {
+                "email": "admin@example.com",
+                "name": "Administrador",
+                "password": stauth.Hasher(['admin123']).generate()[0]  # Senha: admin123
+            }
+        }
+    },
+    "cookie": {
+        "expiry_days": 30,
+        "key": "random_signature_key",
+        "name": "streamlit_authenticator"
+    },
+    "preauthorized": {
+        "emails": ["admin@example.com"]
+    }
+}
+authenticator = stauth.Authenticate(
+    config['credentials'],
+    config['cookie']['name'],
+    config['cookie']['key'],
+    config['cookie']['expiry_days']
 )
 
 # Configuração da página
@@ -29,27 +57,21 @@ st.set_page_config(
 # Inicializar session state
 inicializar_session_state()
 
+# Autenticação
+name, authentication_status, username = authenticator.login('Login', 'main')
+
+if authentication_status:
+    st.session_state.username = username
+    # Inicializar banco do usuário se não existir
+    init_database(username)
+    st.success(f"Bem-vindo, {name}!")
+elif authentication_status == False:
+    st.error('Usuário ou senha incorretos.')
+elif authentication_status == None:
+    st.warning('Por favor, insira seu usuário e senha.')
+
 # Verificar se usuário está logado
-if st.session_state.username is None:
-    # PÁGINA DE LOGIN
-    st.title("🔐 Login - Planejador Financeiro")
-    
-    username = st.text_input("Usuário", key="login_username")
-    password = st.text_input("Senha", type="password", key="login_password")
-    
-    if st.button("Entrar"):
-        if username and password:
-            authenticated_username = authenticate_user(username, password)
-            if authenticated_username:
-                st.session_state.username = authenticated_username
-                # Inicializar banco do usuário se não existir
-                init_database(authenticated_username)
-                st.success("Login realizado com sucesso!")
-                st.rerun()
-            else:
-                st.error("Usuário ou senha incorretos.")
-        else:
-            st.error("Preencha todos os campos.")
+if st.session_state.username is not None:
     
     st.stop()  # Para a execução se não estiver logado
 
@@ -142,10 +164,7 @@ col1, col2 = st.columns([5, 1])
 with col1:
     st.markdown(f"### BEM-VINDO(A)!  —  {st.session_state.username}")
 with col2:
-    if st.button("🚪 Sair", width='stretch'):
-        st.session_state.username = None
-        st.session_state.page = 'Dashboard'
-        st.rerun()
+    authenticator.logout('Sair', 'main')
 
 # Navegação em estilo “abas” (botões clicáveis)
 cols = st.columns(len(pages))
