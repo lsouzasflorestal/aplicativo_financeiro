@@ -135,7 +135,7 @@ st.markdown("""
 
 # ======================== TOPO / NAVEGAÇÃO ========================
 # Navbar horizontal (melhor para visualização mobile)
-pages = ["Dashboard", "Lançamentos", "Categorias", "Bancos", "Relatórios", "Editar/Deletar"]
+pages = ["📊 Dashboard", "🧾 Lançamentos", "📝 Categorias", "🏦 Bancos", "📈 Relatórios", "✏️ Editar/Deletar"]
 
 page = st.session_state.get('page', 'Dashboard')
 if page not in pages:
