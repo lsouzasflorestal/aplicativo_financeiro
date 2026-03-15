@@ -6,8 +6,6 @@ from calendar import monthrange
 import pandas as pd
 import time
 
-st.write("App loaded successfully!")
-
 from database import (
     init_database, authenticate_user,
     get_bancos, get_categorias, get_transacoes,
@@ -56,8 +54,7 @@ else:
             st.error("Preencha todos os campos.")
 
 # Verificar se usuário está logado
-if st.session_state.get('authentication_status', False):
-    
+if not st.session_state.get('authentication_status', False):
     st.stop()  # Para a execução se não estiver logado
 
 # Inicializar banco de dados do usuário
