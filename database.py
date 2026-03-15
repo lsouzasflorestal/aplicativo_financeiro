@@ -1,0 +1,240 @@
+try:
+    from supabase import create_client, Client
+    SUPABASE_AVAILABLE = True
+except ImportError:
+    SUPABASE_AVAILABLE = False
+    print("Aviso: Módulo supabase não encontrado. Instale com: pip install supabase")
+
+import os
+from datetime import datetime
+from pathlib import Path
+from calendar import monthrange
+import hashlib
+from users import authenticate_user as auth_user_file, get_users
+from config import SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY
+
+# Inicializar cliente Supabase se disponível
+if SUPABASE_AVAILABLE:
+    supabase: Client = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
+    supabase_admin: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY) if SUPABASE_SERVICE_ROLE_KEY else supabase
+else:
+    supabase = None
+    supabase_admin = None
+
+def hash_password(password):
+    """Gera um hash da senha"""
+    return hashlib.sha256(password.encode()).hexdigest()
+
+def get_user_table_prefix(username):
+    """Retorna o prefixo das tabelas do usuário"""
+    return ''
+
+def create_user_tables(username):
+    """Cria as tabelas do usuário se não existirem e insere categorias padrão"""
+    if not SUPABASE_AVAILABLE:
+        print("Erro: Supabase não está disponível. Instale com: pip install supabase")
+        return
+    
+    # Assumir que as tabelas já existem (devem ser criadas manualmente no Supabase)
+    # Inserir categorias padrão se não existirem para o usuário
+    try:
+        response = supabase.table('categorias').select('id').eq('user_id', username).limit(1).execute()
+        if not response.data:
+            default_categories = [
+                ("Moradia", "Despesa"), ("Comunicação", "Despesa"), ("Alimentação", "Despesa"),
+                ("Transporte", "Despesa"), ("Saúde", "Despesa"), ("Pessoais", "Despesa"),
+                ("Educação", "Despesa"), ("Lazer", "Despesa"), ("Serv. Financeiros", "Despesa"),
+                ("Empresa", "Despesa"), ("Dependentes", "Despesa"), ("Diversos", "Despesa"),
+                ("Salário", "Receita"), ("Freelance", "Receita"), ("Investimentos", "Receita"),
+                ("Ações", "Investimento"), ("Criptomoedas", "Investimento"),
+                ("Imóveis", "Investimento"), ("Renda Fixa", "Investimento")
+            ]
+            for nome, tipo in default_categories:
+                try:
+                    supabase.table('categorias').insert({'nome': nome, 'tipo': tipo, 'user_id': username}).execute()
+                except:
+                    pass
+    except:
+        pass
+
+def authenticate_user(username, password):
+    """Autentica um usuário usando o arquivo users.py"""
+    return auth_user_file(username, password)
+
+def init_database(username):
+    """Inicializa o banco de dados do usuário"""
+    create_user_tables(username)
+
+# Funções CRUD para Categorias
+def _check_supabase():
+    """Verifica se Supabase está disponível"""
+    if not SUPABASE_AVAILABLE:
+        raise Exception("Supabase não está disponível. Instale com: pip install supabase")
+
+# Funções CRUD para Categorias
+def get_categorias(username, tipo=None):
+    _check_supabase()
+    """Obtém todas as categorias ou filtrado por tipo"""
+    if tipo:
+        response = supabase.table('categorias').select('*').eq('user_id', username).eq('tipo', tipo).order('nome').execute()
+    else:
+        response = supabase.table('categorias').select('*').eq('user_id', username).order('nome').execute()
+    return response.data
+
+def add_categoria(username, nome, tipo):
+    _check_supabase()
+    """Adiciona uma nova categoria"""
+    try:
+        response = supabase.table('categorias').insert({'nome': nome, 'tipo': tipo, 'user_id': username}).execute()
+        return True
+    except:
+        return False
+
+def delete_categoria(username, categoria_id):
+    _check_supabase()
+    """Deleta uma categoria"""
+    supabase.table('categorias').delete().eq('id', categoria_id).eq('user_id', username).execute()
+
+# Funções CRUD para Bancos
+def get_bancos(username):
+    _check_supabase()
+    """Obtém todos os bancos"""
+    response = supabase.table('bancos').select('*').eq('user_id', username).order('nome').execute()
+    return response.data
+
+def add_banco(username, nome, saldo_inicial=0):
+    _check_supabase()
+    """Adiciona um novo banco"""
+    try:
+        response = supabase.table('bancos').insert({'nome': nome, 'saldo_inicial': saldo_inicial, 'user_id': username}).execute()
+        return True
+    except:
+        return False
+
+def delete_banco(username, banco_id):
+    _check_supabase()
+    """Deleta um banco"""
+    supabase.table('bancos').delete().eq('id', banco_id).eq('user_id', username).execute()
+
+# Funções CRUD para Transações
+def get_transacoes(username, tipo=None, mes=None, ano=None):
+    _check_supabase()
+    """Obtém transações com filtros opcionais"""
+    query = supabase.table('transacoes').select('*').eq('user_id', username)
+
+    if tipo:
+        query = query.eq('tipo', tipo)
+
+    if mes and ano:
+        start_date = f'{ano}-{mes:02d}-01'
+        end_date = f'{ano}-{mes:02d}-{monthrange(ano, mes)[1]}'
+        query = query.gte('data', start_date).lte('data', end_date)
+
+    response = query.order('data', desc=True).execute()
+    transacoes = response.data
+    
+    # Buscar nomes de categoria e banco
+    categoria_dict = {c['id']: c['nome'] for c in get_categorias(username)}
+    banco_dict = {b['id']: b['nome'] for b in get_bancos(username)}
+    
+    for t in transacoes:
+        t['categoria_nome'] = categoria_dict.get(t['categoria_id'], 'Desconhecida')
+        t['banco_nome'] = banco_dict.get(t['banco_id'], 'Desconhecido')
+    
+    return transacoes
+
+def add_transacao(username, tipo, categoria_id, banco_id, valor, descricao, data):
+    _check_supabase()
+    """Adiciona uma nova transação"""
+    response = supabase.table('transacoes').insert({
+        'user_id': username,
+        'tipo': tipo,
+        'categoria_id': categoria_id,
+        'banco_id': banco_id,
+        'valor': valor,
+        'descricao': descricao,
+        'data': data
+    }).execute()
+    return response.data[0]['id']
+
+def update_transacao(username, transacao_id, tipo, categoria_id, banco_id, valor, descricao, data):
+    _check_supabase()
+    """Atualiza uma transação"""
+    supabase.table('transacoes').update({
+        'tipo': tipo,
+        'categoria_id': categoria_id,
+        'banco_id': banco_id,
+        'valor': valor,
+        'descricao': descricao,
+        'data': data
+    }).eq('id', transacao_id).eq('user_id', username).execute()
+
+def delete_transacao(username, transacao_id):
+    _check_supabase()
+    """Deleta uma transação"""
+    supabase.table('transacoes').delete().eq('id', transacao_id).eq('user_id', username).execute()
+
+def get_transacao_by_id(username, transacao_id):
+    _check_supabase()
+    """Obtém uma transação pelo ID com informações de categoria e banco"""
+    response = supabase.table('transacoes').select('*').eq('id', transacao_id).eq('user_id', username).execute()
+    if response.data:
+        t = response.data[0]
+        categoria_dict = {c['id']: c['nome'] for c in get_categorias(username)}
+        banco_dict = {b['id']: b['nome'] for b in get_bancos(username)}
+        t['categoria_nome'] = categoria_dict.get(t['categoria_id'], 'Desconhecida')
+        t['banco_nome'] = banco_dict.get(t['banco_id'], 'Desconhecido')
+        return t
+    return None
+
+# Funções para relatórios
+def get_saldo_total(username):
+    _check_supabase()
+    """Calcula o saldo total de todos os bancos (incluindo saldos iniciais)"""
+    # Soma saldos iniciais dos bancos
+    bancos = get_bancos(username)
+    saldo_inicial_total = sum(b['saldo_inicial'] for b in bancos)
+    
+    # Soma efeitos das transações
+    transacoes = get_transacoes(username)
+    saldo_transacoes = 0
+    for t in transacoes:
+        if t['tipo'] in ['Receita', 'Investimento']:
+            saldo_transacoes += t['valor']
+        elif t['tipo'] == 'Despesa':
+            saldo_transacoes -= t['valor']
+    
+    return saldo_inicial_total + saldo_transacoes
+
+def get_resumo_mes(username, mes, ano):
+    _check_supabase()
+    """Obtém resumo do mês"""
+    transacoes = get_transacoes(username, mes=mes, ano=ano)
+    resumo = {}
+    for t in transacoes:
+        tipo = t['tipo']
+        valor = t['valor']
+        resumo[tipo] = resumo.get(tipo, 0) + valor
+    return resumo
+
+def get_gastos_por_categoria(username, mes, ano):
+    _check_supabase()
+    """Obtém gastos por categoria no mês"""
+    transacoes = get_transacoes(username, tipo='Despesa', mes=mes, ano=ano)
+    gastos = {}
+    for t in transacoes:
+        nome = t['categoria_nome']
+        valor = t['valor']
+        gastos[nome] = gastos.get(nome, 0) + valor
+    return [{'nome': k, 'total': v} for k, v in sorted(gastos.items(), key=lambda x: x[1], reverse=True)]
+
+def get_receitas_por_categoria(username, mes, ano):
+    _check_supabase()
+    """Obtém receitas por categoria no mês"""
+    transacoes = get_transacoes(username, tipo='Receita', mes=mes, ano=ano)
+    receitas = {}
+    for t in transacoes:
+        nome = t['categoria_nome']
+        valor = t['valor']
+        receitas[nome] = receitas.get(nome, 0) + valor
+    return [{'nome': k, 'total': v} for k, v in sorted(receitas.items(), key=lambda x: x[1], reverse=True)]
