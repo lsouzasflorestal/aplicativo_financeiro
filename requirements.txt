@@ -2,4 +2,3 @@ supabase
 streamlit
 plotly
 pandas
-streamlit-authenticator

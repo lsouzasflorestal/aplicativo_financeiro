@@ -5,7 +5,6 @@ from datetime import datetime, timedelta
 from calendar import monthrange
 import pandas as pd
 import time
-import streamlit_authenticator as stauth
 
 from database import (
     init_database,
@@ -17,33 +16,6 @@ from database import (
 from utils import (
     formatar_moeda, formatar_percentual, get_mes_atual, get_ano_atual,
     get_nomes_meses, inicializar_session_state, criar_espacamento
-)
-
-# Configuração do autenticador
-config = {
-    "credentials": {
-        "usernames": {
-            "admin": {
-                "email": "admin@example.com",
-                "name": "Administrador",
-                "password": stauth.Hasher.hash("admin123")  # Senha: admin123
-            }
-        }
-    },
-    "cookie": {
-        "expiry_days": 30,
-        "key": "random_signature_key",
-        "name": "streamlit_authenticator"
-    },
-    "preauthorized": {
-        "emails": ["admin@example.com"]
-    }
-}
-authenticator = stauth.Authenticate(
-    config['credentials'],
-    config['cookie']['name'],
-    config['cookie']['key'],
-    config['cookie']['expiry_days']
 )
 
 # Configuração da página
@@ -58,12 +30,8 @@ st.set_page_config(
 inicializar_session_state()
 
 # Autenticação
-authenticator.login(location='unrendered')
-
 if st.session_state.get('authentication_status', False):
-    st.session_state.username = st.session_state.get('username')
-    # Inicializar banco do usuário se não existir
-    init_database(st.session_state.username)
+    pass
 else:
     st.title("🔐 Login - Planejador Financeiro")
     
@@ -73,10 +41,10 @@ else:
     if st.button("Entrar"):
         if username and password:
             # Verificar credenciais
-            if username in config['credentials']['usernames'] and stauth.Hasher.verify(password, config['credentials']['usernames'][username]['password']):
+            if username == 'admin' and password == 'admin123':
                 st.session_state['authentication_status'] = True
                 st.session_state['username'] = username
-                st.session_state['name'] = config['credentials']['usernames'][username]['name']
+                st.session_state['name'] = 'Administrador'
                 st.success("Login realizado com sucesso!")
                 st.rerun()
             else:
@@ -179,8 +147,9 @@ with col1:
     st.markdown(f"### BEM-VINDO(A)!  —  {st.session_state.username}")
 with col2:
     if st.button("🚪 Sair"):
-        authenticator.logout()
-        st.session_state.username = None
+        st.session_state['authentication_status'] = False
+        st.session_state['username'] = None
+        st.session_state['name'] = None
         st.rerun()
 
 # Navegação em estilo “abas” (botões clicáveis)
