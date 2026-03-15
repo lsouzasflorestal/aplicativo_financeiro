@@ -13,9 +13,13 @@ import hashlib
 import hashlib
 
 def authenticate_user(username, password):
-    """Autentica um usuário (versão simplificada para deploy)"""
-    # Usuário hardcoded para deploy
-    users = {"admin": hashlib.sha256("admin123".encode()).hexdigest()}
+    """Autentica um usuário com senha hashada"""
+    # Usuários cadastrados (adicione novos usuários aqui editando o código)
+    # Para adicionar: "novo_user": hashlib.sha256("senha".encode()).hexdigest()
+    users = {
+        "admin": hashlib.sha256("admin123".encode()).hexdigest(),
+        # Exemplo: "user2": hashlib.sha256("password2".encode()).hexdigest(),
+    }
     if username in users and users[username] == hashlib.sha256(password.encode()).hexdigest():
         return username
     return None

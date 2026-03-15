@@ -47,6 +47,10 @@ def inicializar_session_state():
         st.session_state.user_id = None
     if 'username' not in st.session_state:
         st.session_state.username = None
+    if 'authentication_status' not in st.session_state:
+        st.session_state.authentication_status = False
+    if 'name' not in st.session_state:
+        st.session_state.name = None
 
 def criar_espacamento(linhas=1):
     """Cria espaçamento vertical"""

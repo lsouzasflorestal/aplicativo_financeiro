@@ -7,7 +7,7 @@ import pandas as pd
 import time
 
 from database import (
-    init_database,
+    init_database, authenticate_user,
     get_bancos, get_categorias, get_transacoes,
     add_transacao, update_transacao, delete_transacao, get_transacao_by_id,
     add_banco, delete_banco, add_categoria, delete_categoria,
@@ -41,10 +41,11 @@ else:
     if st.button("Entrar"):
         if username and password:
             # Verificar credenciais
-            if username == 'admin' and password == 'admin123':
+            authenticated_username = authenticate_user(username, password)
+            if authenticated_username:
                 st.session_state['authentication_status'] = True
-                st.session_state['username'] = username
-                st.session_state['name'] = 'Administrador'
+                st.session_state['username'] = authenticated_username
+                st.session_state['name'] = 'Administrador'  # Ou buscar do user
                 st.success("Login realizado com sucesso!")
                 st.rerun()
             else:
@@ -150,6 +151,7 @@ with col2:
         st.session_state['authentication_status'] = False
         st.session_state['username'] = None
         st.session_state['name'] = None
+        st.session_state.page = 'Dashboard'
         st.rerun()
 
 # Navegação em estilo “abas” (botões clicáveis)
