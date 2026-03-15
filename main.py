@@ -137,9 +137,9 @@ st.markdown("""
 # Navbar horizontal (melhor para visualização mobile)
 pages = ["📊 Dashboard", "🧾 Lançamentos", "📝 Categorias", "🏦 Bancos", "📈 Relatórios", "✏️ Editar/Deletar"]
 
-page = st.session_state.get('page', 'Dashboard')
+page = st.session_state.get('page', '📊 Dashboard')
 if page not in pages:
-    page = 'Dashboard'
+    page = '📊 Dashboard'
 
 # Cabeçalho com logout
 col1, col2 = st.columns([5, 1])
@@ -186,7 +186,7 @@ if page in ["Dashboard", "Relatórios"]:
 # ======================== PÁGINAS ========================
 
 # PÁGINA: DASHBOARD
-if page == "Dashboard":
+if page == "📊 Dashboard":
     st.title("📊 Acompanhamento Financeiro")
     
     mes = st.session_state.mes_selecionado
@@ -409,7 +409,7 @@ if page == "Dashboard":
             st.info("Nenhum investimento neste mês")
 
 # PÁGINA: LANÇAMENTOS
-elif page == "Lançamentos":
+elif page == "🧾 Lançamentos":
     st.title("📝 Registrar Transação")
     
     # Inicializar session_state para tipo de transação
@@ -612,7 +612,7 @@ elif page == "Lançamentos":
         st.info("Nenhuma transação registrada")
 
 # PÁGINA: CATEGORIAS
-elif page == "Categorias":
+elif page == "📝 Categorias":
     st.title("🏷️ Gerenciar Categorias")
     
     col1, col2 = st.columns(2)
@@ -677,7 +677,7 @@ elif page == "Categorias":
             st.write(f"Nenhuma categoria de {tipo}")
 
 # PÁGINA: BANCOS
-elif page == "Bancos":
+elif page == "🏦 Bancos":
     st.title("🏦 Gerenciar Bancos")
     
     col1, col2 = st.columns(2)
@@ -742,7 +742,7 @@ elif page == "Bancos":
         st.info("Nenhum banco cadastrado")
 
 # PÁGINA: RELATÓRIOS
-elif page == "Relatórios":
+elif page == "📈 Relatórios":
     st.title("📈 Relatórios")
     
     mes = st.session_state.mes_selecionado
