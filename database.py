@@ -10,7 +10,18 @@ from datetime import datetime
 from pathlib import Path
 from calendar import monthrange
 import hashlib
-from users import authenticate_user as auth_user_file, get_users
+import hashlib
+
+def authenticate_user(username, password):
+    """Autentica um usuário (versão simplificada para deploy)"""
+    # Usuário hardcoded para deploy
+    users = {"admin": hashlib.sha256("admin123".encode()).hexdigest()}
+    if username in users and users[username] == hashlib.sha256(password.encode()).hexdigest():
+        return username
+    return None
+
+def get_users():
+    return {"admin": hashlib.sha256("admin123".encode()).hexdigest()}
 from config import SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY
 
 # Inicializar cliente Supabase se disponível
