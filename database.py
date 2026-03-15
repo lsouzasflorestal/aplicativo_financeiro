@@ -24,13 +24,17 @@ def get_users():
     return {"admin": hashlib.sha256("admin123".encode()).hexdigest()}
 from config import SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY
 
-# Inicializar cliente Supabase se disponível
-if SUPABASE_AVAILABLE:
-    supabase: Client = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
-    supabase_admin: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY) if SUPABASE_SERVICE_ROLE_KEY else supabase
-else:
-    supabase = None
-    supabase_admin = None
+def get_supabase():
+    if not SUPABASE_AVAILABLE:
+        raise Exception("Supabase não disponível")
+    return create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
+
+def get_supabase_admin():
+    if not SUPABASE_AVAILABLE:
+        raise Exception("Supabase não disponível")
+    if SUPABASE_SERVICE_ROLE_KEY:
+        return create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+    return get_supabase()
 
 def hash_password(password):
     """Gera um hash da senha"""
@@ -49,6 +53,7 @@ def create_user_tables(username):
     # Assumir que as tabelas já existem (devem ser criadas manualmente no Supabase)
     # Inserir categorias padrão se não existirem para o usuário
     try:
+        supabase = get_supabase()
         response = supabase.table('categorias').select('id').eq('user_id', username).limit(1).execute()
         if not response.data:
             default_categories = [
@@ -82,6 +87,7 @@ def _check_supabase():
 def get_categorias(username, tipo=None):
     _check_supabase()
     """Obtém todas as categorias ou filtrado por tipo"""
+    supabase = get_supabase()
     if tipo:
         response = supabase.table('categorias').select('*').eq('user_id', username).eq('tipo', tipo).order('nome').execute()
     else:
@@ -92,6 +98,7 @@ def add_categoria(username, nome, tipo):
     _check_supabase()
     """Adiciona uma nova categoria"""
     try:
+        supabase = get_supabase()
         response = supabase.table('categorias').insert({'nome': nome, 'tipo': tipo, 'user_id': username}).execute()
         return True
     except:
@@ -100,12 +107,14 @@ def add_categoria(username, nome, tipo):
 def delete_categoria(username, categoria_id):
     _check_supabase()
     """Deleta uma categoria"""
+    supabase = get_supabase()
     supabase.table('categorias').delete().eq('id', categoria_id).eq('user_id', username).execute()
 
 # Funções CRUD para Bancos
 def get_bancos(username):
     _check_supabase()
     """Obtém todos os bancos"""
+    supabase = get_supabase()
     response = supabase.table('bancos').select('*').eq('user_id', username).order('nome').execute()
     return response.data
 
@@ -113,6 +122,7 @@ def add_banco(username, nome, saldo_inicial=0):
     _check_supabase()
     """Adiciona um novo banco"""
     try:
+        supabase = get_supabase()
         response = supabase.table('bancos').insert({'nome': nome, 'saldo_inicial': saldo_inicial, 'user_id': username}).execute()
         return True
     except:
@@ -121,12 +131,14 @@ def add_banco(username, nome, saldo_inicial=0):
 def delete_banco(username, banco_id):
     _check_supabase()
     """Deleta um banco"""
+    supabase = get_supabase()
     supabase.table('bancos').delete().eq('id', banco_id).eq('user_id', username).execute()
 
 # Funções CRUD para Transações
 def get_transacoes(username, tipo=None, mes=None, ano=None):
     _check_supabase()
     """Obtém transações com filtros opcionais"""
+    supabase = get_supabase()
     query = supabase.table('transacoes').select('*').eq('user_id', username)
 
     if tipo:
@@ -153,6 +165,7 @@ def get_transacoes(username, tipo=None, mes=None, ano=None):
 def add_transacao(username, tipo, categoria_id, banco_id, valor, descricao, data):
     _check_supabase()
     """Adiciona uma nova transação"""
+    supabase = get_supabase()
     response = supabase.table('transacoes').insert({
         'user_id': username,
         'tipo': tipo,
@@ -167,6 +180,7 @@ def add_transacao(username, tipo, categoria_id, banco_id, valor, descricao, data
 def update_transacao(username, transacao_id, tipo, categoria_id, banco_id, valor, descricao, data):
     _check_supabase()
     """Atualiza uma transação"""
+    supabase = get_supabase()
     supabase.table('transacoes').update({
         'tipo': tipo,
         'categoria_id': categoria_id,
@@ -179,11 +193,13 @@ def update_transacao(username, transacao_id, tipo, categoria_id, banco_id, valor
 def delete_transacao(username, transacao_id):
     _check_supabase()
     """Deleta uma transação"""
+    supabase = get_supabase()
     supabase.table('transacoes').delete().eq('id', transacao_id).eq('user_id', username).execute()
 
 def get_transacao_by_id(username, transacao_id):
     _check_supabase()
     """Obtém uma transação pelo ID com informações de categoria e banco"""
+    supabase = get_supabase()
     response = supabase.table('transacoes').select('*').eq('id', transacao_id).eq('user_id', username).execute()
     if response.data:
         t = response.data[0]
