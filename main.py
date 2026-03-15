@@ -58,30 +58,20 @@ st.set_page_config(
 inicializar_session_state()
 
 # Autenticação
-if 'authentication_status' not in st.session_state:
-    st.session_state['authentication_status'] = None
+name, authentication_status, username = authenticator.login('Login', 'sidebar')
 
-if st.session_state['authentication_status'] is None or st.session_state['authentication_status'] is False:
-    st.title("🔐 Login - Planejador Financeiro")
-    
-    username = st.text_input("Usuário")
-    password = st.text_input("Senha", type="password")
-    
-    if st.button("Entrar"):
-        if username and password:
-            authenticator.authenticate(username, password)
-            if st.session_state['authentication_status']:
-                st.success("Login realizado com sucesso!")
-                st.session_state.username = st.session_state['username']
-                init_database(st.session_state.username)
-                st.rerun()
-            else:
-                st.error("Usuário ou senha incorretos.")
-        else:
-            st.error("Preencha todos os campos.")
-elif st.session_state['authentication_status']:
-    # Usuário logado
-    pass
+if authentication_status:
+    st.session_state.username = username
+    # Inicializar banco do usuário se não existir
+    init_database(username)
+    st.success(f"Bem-vindo, {name}!")
+elif authentication_status == False:
+    st.error('Usuário ou senha incorretos.')
+elif authentication_status == None:
+    st.warning('Por favor, insira seu usuário e senha.')
+
+# Verificar se usuário está logado
+if st.session_state.username is not None:
     
     st.stop()  # Para a execução se não estiver logado
 
