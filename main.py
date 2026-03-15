@@ -73,7 +73,7 @@ else:
     if st.button("Entrar"):
         if username and password:
             # Verificar credenciais
-            if username in config['credentials']['usernames'] and stauth.Hasher.check(password, config['credentials']['usernames'][username]['password']):
+            if username in config['credentials']['usernames'] and stauth.Hasher.verify(password, config['credentials']['usernames'][username]['password']):
                 st.session_state['authentication_status'] = True
                 st.session_state['username'] = username
                 st.session_state['name'] = config['credentials']['usernames'][username]['name']
