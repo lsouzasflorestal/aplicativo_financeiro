@@ -13,8 +13,12 @@ import hashlib
 
 from config import SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY
 
+from functools import lru_cache
+
+# ==== Autenticação (hardcoded) ====
+
 def authenticate_user(username, password):
-    """Autentica um usuário com senha hashada"""
+    """Autentica um usuário com senha hashada."""
     # Usuários cadastrados (adicione novos usuários aqui editando o código)
     # Para adicionar: "novo_user": hashlib.sha256("senha".encode()).hexdigest()
     users = {
@@ -25,17 +29,38 @@ def authenticate_user(username, password):
         return username
     return None
 
-def get_supabase():
+# ==== Cliente Supabase (singleton para evitar reconexões) ====
+@lru_cache(maxsize=1)
+def _create_supabase_client():
     if not SUPABASE_AVAILABLE:
         raise Exception("Supabase não disponível")
     return create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
 
-def get_supabase_admin():
+@lru_cache(maxsize=1)
+def _create_supabase_admin_client():
     if not SUPABASE_AVAILABLE:
         raise Exception("Supabase não disponível")
     if SUPABASE_SERVICE_ROLE_KEY:
         return create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
-    return get_supabase()
+    return _create_supabase_client()
+
+def get_supabase():
+    return _create_supabase_client()
+
+def get_supabase_admin():
+    return _create_supabase_admin_client()
+
+# Cache helpers (invalidate after writes)
+_cached_funcs = []
+
+def _cache(func):
+    cached = lru_cache(maxsize=128)(func)
+    _cached_funcs.append(cached)
+    return cached
+
+def _clear_caches():
+    for fn in _cached_funcs:
+        fn.cache_clear()
 
 def hash_password(password):
     """Gera um hash da senha"""
@@ -85,6 +110,7 @@ def _check_supabase():
         raise Exception("Supabase não está disponível. Instale com: pip install supabase")
 
 # Funções CRUD para Categorias
+@_cache
 def get_categorias(username, tipo=None):
     _check_supabase()
     """Obtém todas as categorias ou filtrado por tipo"""
@@ -100,7 +126,8 @@ def add_categoria(username, nome, tipo):
     """Adiciona uma nova categoria"""
     try:
         supabase = get_supabase()
-        response = supabase.table('categorias').insert({'nome': nome, 'tipo': tipo, 'user_id': username}).execute()
+        supabase.table('categorias').insert({'nome': nome, 'tipo': tipo, 'user_id': username}).execute()
+        _clear_caches()
         return True
     except:
         return False
@@ -110,8 +137,10 @@ def delete_categoria(username, categoria_id):
     """Deleta uma categoria"""
     supabase = get_supabase()
     supabase.table('categorias').delete().eq('id', categoria_id).eq('user_id', username).execute()
+    _clear_caches()
 
 # Funções CRUD para Bancos
+@_cache
 def get_bancos(username):
     _check_supabase()
     """Obtém todos os bancos"""
@@ -124,7 +153,8 @@ def add_banco(username, nome, saldo_inicial=0):
     """Adiciona um novo banco"""
     try:
         supabase = get_supabase()
-        response = supabase.table('bancos').insert({'nome': nome, 'saldo_inicial': saldo_inicial, 'user_id': username}).execute()
+        supabase.table('bancos').insert({'nome': nome, 'saldo_inicial': saldo_inicial, 'user_id': username}).execute()
+        _clear_caches()
         return True
     except:
         return False
@@ -134,8 +164,10 @@ def delete_banco(username, banco_id):
     """Deleta um banco"""
     supabase = get_supabase()
     supabase.table('bancos').delete().eq('id', banco_id).eq('user_id', username).execute()
+    _clear_caches()
 
 # Funções CRUD para Transações
+@_cache
 def get_transacoes(username, tipo=None, mes=None, ano=None):
     _check_supabase()
     """Obtém transações com filtros opcionais"""
@@ -153,14 +185,14 @@ def get_transacoes(username, tipo=None, mes=None, ano=None):
     response = query.order('data', desc=True).execute()
     transacoes = response.data
     
-    # Buscar nomes de categoria e banco
+    # Buscar nomes de categoria e banco (usa cache para não sofrer múltiplos hits)
     categoria_dict = {c['id']: c['nome'] for c in get_categorias(username)}
     banco_dict = {b['id']: b['nome'] for b in get_bancos(username)}
-    
+
     for t in transacoes:
         t['categoria_nome'] = categoria_dict.get(t['categoria_id'], 'Desconhecida')
         t['banco_nome'] = banco_dict.get(t['banco_id'], 'Desconhecido')
-    
+
     return transacoes
 
 def add_transacao(username, tipo, categoria_id, banco_id, valor, descricao, data):
@@ -176,6 +208,7 @@ def add_transacao(username, tipo, categoria_id, banco_id, valor, descricao, data
         'descricao': descricao,
         'data': data
     }).execute()
+    _clear_caches()
     return response.data[0]['id']
 
 def update_transacao(username, transacao_id, tipo, categoria_id, banco_id, valor, descricao, data):
@@ -190,12 +223,15 @@ def update_transacao(username, transacao_id, tipo, categoria_id, banco_id, valor
         'descricao': descricao,
         'data': data
     }).eq('id', transacao_id).eq('user_id', username).execute()
+    _clear_caches()
+
 
 def delete_transacao(username, transacao_id):
     _check_supabase()
     """Deleta uma transação"""
     supabase = get_supabase()
     supabase.table('transacoes').delete().eq('id', transacao_id).eq('user_id', username).execute()
+    _clear_caches()
 
 def get_transacao_by_id(username, transacao_id):
     _check_supabase()
