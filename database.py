@@ -13,6 +13,18 @@ import hashlib
 
 from config import SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY
 
+def authenticate_user(username, password):
+    """Autentica um usuário com senha hashada"""
+    # Usuários cadastrados (adicione novos usuários aqui editando o código)
+    # Para adicionar: "novo_user": hashlib.sha256("senha".encode()).hexdigest()
+    users = {
+        "admin": hashlib.sha256("admin123".encode()).hexdigest(),
+        # Exemplo: "user2": hashlib.sha256("password2".encode()).hexdigest(),
+    }
+    if username in users and users[username] == hashlib.sha256(password.encode()).hexdigest():
+        return username
+    return None
+
 def get_supabase():
     if not SUPABASE_AVAILABLE:
         raise Exception("Supabase não disponível")
